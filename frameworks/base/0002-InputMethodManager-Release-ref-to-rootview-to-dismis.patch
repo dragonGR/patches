@@ -1,0 +1,29 @@
+From 5fe774adeeefd48d1f6be252f0b45966103e591c Mon Sep 17 00:00:00 2001
+From: dragonGR <alex@dragongr.dev>
+Date: Fri, 5 Jun 2020 05:38:21 +0300
+Subject: [PATCH 1/1] InputMethodManager: Release ref to rootview to dismiss
+ window
+
+Change-Id: I6e30c31dcfaab19ba02753ce5a30a8b78c752cc7
+---
+ core/java/android/view/inputmethod/InputMethodManager.java | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/core/java/android/view/inputmethod/InputMethodManager.java b/core/java/android/view/inputmethod/InputMethodManager.java
+index 032af1c5c7b..18aa08d662b 100644
+--- a/core/java/android/view/inputmethod/InputMethodManager.java
++++ b/core/java/android/view/inputmethod/InputMethodManager.java
+@@ -1768,6 +1768,10 @@ public final class InputMethodManager {
+     public void windowDismissed(IBinder appWindowToken) {
+         checkFocus();
+         synchronized (mH) {
++            if (mCurRootView != null
++                    && mCurRootView.getWindowToken() == appWindowToken) {
++                mCurRootView = null;
++            }
+             if (mServedView != null &&
+                     mServedView.getWindowToken() == appWindowToken) {
+                 finishInputLocked();
+-- 
+2.27.0
+

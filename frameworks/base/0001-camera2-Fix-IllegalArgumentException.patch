@@ -1,0 +1,47 @@
+From 6fc6ba70f98f70fbf3487d7caa8086ff0c954583 Mon Sep 17 00:00:00 2001
+From: dragonGR <alex@dragongr.dev>
+Date: Wed, 3 Jun 2020 06:05:48 +0300
+Subject: [PATCH 1/1] camera2: Fix IllegalArgumentException
+
+Can't reproduce it on my 4.14 device but possible on a 3.10.
+
+When you switch to other menus(recording mode etc.) right after pressing picture taking button, a IllegalArgumentException happens:
+
+I RequestThread-0: Received jpeg.
+E Legacy-CameraDevice-JNI: LegacyCameraDevice_nativeGetSurfaceId: Could not retrieve native Surface from surface.
+--------- beginning of crash
+E AndroidRuntime: FATAL EXCEPTION: Thread-213
+E AndroidRuntime: Process: com.android.camera2, PID: 3481
+E AndroidRuntime: java.lang.IllegalArgumentException: Surface had no valid native Surface.
+E AndroidRuntime:        at android.hardware.camera2.legacy.LegacyCameraDevice.nativeGetSurfaceId(Native Method)
+E AndroidRuntime:        at android.hardware.camera2.legacy.LegacyCameraDevice.getSurfaceId(LegacyCameraDevice.java:658)
+E AndroidRuntime:        at android.hardware.camera2.legacy.LegacyCameraDevice.containsSurfaceId(LegacyCameraDevice.java:678)
+E AndroidRuntime:        at android.hardware.camera2.legacy.RequestThreadManager$2.onPictureTaken(RequestThreadManager.java:220)
+E AndroidRuntime:        at android.hardware.Camera$EventHandler.handleMessage(Camera.java:1092)
+E AndroidRuntime:        at android.os.Handler.dispatchMessage(Handler.java:102)
+E AndroidRuntime:        at android.os.Looper.loop(Looper.java:148)
+E AndroidRuntime:        at android.hardware.camera2.legacy.CameraDeviceUserShim$CameraLooper.run(CameraDeviceUserShim.java:136)
+E AndroidRuntime:        at java.lang.Thread.run(Thread.java:818)
+W ActivityManager:   Force finishing activity com.android.camera2/com.android.camera.CameraLauncher
+
+Change-Id: I052c270cdaf0644c62fd18515bf97f90ad755068
+---
+ .../android/hardware/camera2/legacy/RequestThreadManager.java   | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/core/java/android/hardware/camera2/legacy/RequestThreadManager.java b/core/java/android/hardware/camera2/legacy/RequestThreadManager.java
+index c1091c665b8..ff462c15eb0 100644
+--- a/core/java/android/hardware/camera2/legacy/RequestThreadManager.java
++++ b/core/java/android/hardware/camera2/legacy/RequestThreadManager.java
+@@ -247,6 +247,8 @@ public class RequestThreadManager {
+                     }
+                 } catch (LegacyExceptionUtils.BufferQueueAbandonedException e) {
+                     Log.w(TAG, "Surface abandoned, dropping frame. ", e);
++                } catch (IllegalArgumentException e) {
++                    Log.w(TAG, "no valid native surface, dropping frame. ", e);
+                 }
+             }
+ 
+-- 
+2.27.0
+
