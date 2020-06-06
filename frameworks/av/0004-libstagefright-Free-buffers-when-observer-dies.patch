@@ -1,0 +1,50 @@
+From daf44eaaa345f1ed181ab8f6fe6b8206890b926d Mon Sep 17 00:00:00 2001
+From: dragonGR <alex@dragongr.dev>
+Date: Thu, 4 Jun 2020 19:58:26 +0300
+Subject: [PATCH 1/1] libstagefright: Free buffers when observer dies
+
+In case the observer dies from allocating the buffer that component remains
+in a load state. It checks for idle state to free the buffer which obviously leads to a memory leak, that's why I explicitly call the free buffer to avoid that.
+
+Perhaps acquiring mLock outside freeActivateBuffers() is a safe route.
+
+Change-Id: I1b751d30fdb404029b96b605aa03c6b9ba8333ff
+---
+ media/libstagefright/omx/OMXNodeInstance.cpp | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/media/libstagefright/omx/OMXNodeInstance.cpp b/media/libstagefright/omx/OMXNodeInstance.cpp
+index 81d393683..d28c22fba 100644
+--- a/media/libstagefright/omx/OMXNodeInstance.cpp
++++ b/media/libstagefright/omx/OMXNodeInstance.cpp
+@@ -473,7 +473,10 @@ status_t OMXNodeInstance::freeNode() {
+             ALOGV("forcing Idle->Loaded");
+             sendCommand(OMX_CommandStateSet, OMX_StateLoaded);
+ 
+-            freeActiveBuffers();
++            {
++                Mutex::Autolock _l(mLock);
++                freeActiveBuffers();
++            }
+ 
+             OMX_ERRORTYPE err;
+             int32_t iteration = 0;
+@@ -509,6 +512,7 @@ status_t OMXNodeInstance::freeNode() {
+     }
+ 
+     Mutex::Autolock _l(mLock);
++    freeActiveBuffers();
+ 
+     status_t err = mOwner->freeNode(this);
+ 
+@@ -1649,7 +1653,6 @@ status_t OMXNodeInstance::allocateSecureBuffer(
+ 
+ status_t OMXNodeInstance::freeBuffer(
+         OMX_U32 portIndex, IOMX::buffer_id buffer) {
+-    Mutex::Autolock autoLock(mLock);
+     if (mHandle == NULL) {
+         return DEAD_OBJECT;
+     }
+-- 
+2.27.0
+

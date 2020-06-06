@@ -1,0 +1,69 @@
+From a573930e8bfab9517058e02ad23073b3b685e8fa Mon Sep 17 00:00:00 2001
+From: dragonGR <alextsanisbadlorg@gmail.com>
+Date: Sat, 21 Dec 2019 23:52:14 +0200
+Subject: [PATCH 1/1] httplive: Speed up buffering on fast networks
+
+We are connected on a fast network, why not speed up the buffering process ? While we're at it, increase the number of retries. In case we aren't connected into a fast network, do a check before notify.
+
+Change-Id: I8835c8f1713ebf2047775be9cabc3a5880d72d59
+---
+ .../httplive/PlaylistFetcher.cpp              | 22 ++++++++++++++++++-
+ .../libstagefright/httplive/PlaylistFetcher.h |  2 ++
+ 2 files changed, 23 insertions(+), 1 deletion(-)
+
+diff --git a/media/libstagefright/httplive/PlaylistFetcher.cpp b/media/libstagefright/httplive/PlaylistFetcher.cpp
+index 635ecfe48..d77afe210 100644
+--- a/media/libstagefright/httplive/PlaylistFetcher.cpp
++++ b/media/libstagefright/httplive/PlaylistFetcher.cpp
+@@ -1144,9 +1144,16 @@ bool PlaylistFetcher::initDownloadState(
+     if (mSeqNumber < firstSeqNumberInPlaylist
+             || mSeqNumber > lastSeqNumberInPlaylist
+             || err != OK) {
+-        if ((err != OK || !mPlaylist->isComplete()) && mNumRetries < kMaxNumRetries) {
++        if (err != OK || !mPlaylist->isComplete()) {
+             ++mNumRetries;
+ 
++            if (mNumRetries > kMaxNumRetries && !bufferAvailable()) {
++                ALOGE("Unable to find %d in playlist(contains %d - %d)", mSeqNumber, firstSeqNumberInPlaylist,
++                    lastSeqNumberInPlaylist);
++                notifyError(ERROR_END_OF_STREAM);
++                return false;
++            }
++
+             if (mSeqNumber > lastSeqNumberInPlaylist || err != OK) {
+                 // make sure we reach this retry logic on refresh failures
+                 // by adding an err != OK clause to all enclosing if's.
+@@ -2248,4 +2255,17 @@ void PlaylistFetcher::updateTargetDuration() {
+     msg->post();
+ }
+ 
++bool PlaylistFetcher::bufferAvailable() const {
++    status_t result = OK;
++    for (size_t i = 0; i < mPacketSources.size(); ++i) {
++        if ((mStreamTypeMask & mPacketSources.keyAt(i)) == 0) {
++            continue;
++        }
++        if (mPacketSources.valueAt(i)->hasBufferAvailable(&result)) {
++            return true;
++        }	
++    }
++    return false;	
++}
++
+ }  // namespace android
+diff --git a/media/libstagefright/httplive/PlaylistFetcher.h b/media/libstagefright/httplive/PlaylistFetcher.h
+index 5d3f9c138..d9648f558 100644
+--- a/media/libstagefright/httplive/PlaylistFetcher.h
++++ b/media/libstagefright/httplive/PlaylistFetcher.h
+@@ -258,6 +258,8 @@ private:
+     void updateDuration();
+     void updateTargetDuration();
+ 
++    bool bufferAvailable() const;
++
+     DISALLOW_EVIL_CONSTRUCTORS(PlaylistFetcher);
+ };
+ 
+-- 
+2.27.0
+
