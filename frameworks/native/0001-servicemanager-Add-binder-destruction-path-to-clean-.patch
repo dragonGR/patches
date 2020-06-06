@@ -1,0 +1,95 @@
+From 897f003ff460163fc95f30d36ea755d6f93bc65b Mon Sep 17 00:00:00 2001
+From: dragonGR <alex@dragongr.dev>
+Date: Fri, 5 Jun 2020 05:53:09 +0300
+Subject: [PATCH 1/1] servicemanager: Add binder destruction path to clean up
+ failures
+
+Change-Id: I5ac001862a8104ad38444ded3570dcad9aba60c9
+---
+ cmds/servicemanager/binder.c | 36 ++++++++++++++++++++++++++++++++++++
+ cmds/servicemanager/binder.h |  1 +
+ 2 files changed, 37 insertions(+)
+
+diff --git a/cmds/servicemanager/binder.c b/cmds/servicemanager/binder.c
+index cf3b1728b..d63ee4e1f 100644
+--- a/cmds/servicemanager/binder.c
++++ b/cmds/servicemanager/binder.c
+@@ -21,6 +21,7 @@
+ #define TRACE 0
+ 
+ void bio_init_from_txn(struct binder_io *io, struct binder_transaction_data *txn);
++static struct flat_binder_object* _bio_get_obj(struct binder_io* bio);
+ 
+ #if TRACE
+ void hexdump(void *_data, size_t len)
+@@ -279,10 +280,17 @@ int binder_parse(struct binder_state *bs, struct binder_io *bio,
+                 struct binder_io msg;
+                 struct binder_io reply;
+                 int res;
++                struct flat_binder_object *obj;
+ 
+                 bio_init(&reply, rdata, sizeof(rdata), 4);
+                 bio_init_from_txn(&msg, &txn.transaction_data);
+                 res = func(bs, &txn, &msg, &reply);
++                while ((obj = _bio_get_obj(&msg))) {
++                    if ((obj->hdr.type == BINDER_TYPE_FD) &&
++                        (obj->handle != (uint32_t)-1)) {
++                        close(obj->handle);
++                    }
++                }
+                 if (txn.transaction_data.flags & TF_ONE_WAY) {
+                     binder_free_buffer(bs, txn.transaction_data.data.ptr.buffer);
+                 } else {
+@@ -563,6 +571,19 @@ void bio_put_ref(struct binder_io *bio, uint32_t handle)
+     obj->cookie = 0;
+ }
+ 
++void bio_put_fd(struct binder_io* bio, uint32_t fd)
++{
++    struct flat_binder_object* obj;
++    obj = bio_alloc_obj(bio);
++    if (!obj) {
++        return;
++    }
++    obj->flags = 0x7f | FLAT_BINDER_FLAG_ACCEPTS_FDS;
++    obj->hdr.type = BINDER_TYPE_FD;
++    obj->handle = dup(fd);
++    obj->cookie = 0;
++}
++
+ void bio_put_string16(struct binder_io *bio, const uint16_t *str)
+ {
+     size_t len;
+@@ -680,3 +701,18 @@ uint32_t bio_get_ref(struct binder_io *bio)
+ 
+     return 0;
+ }
++
++uint32_t bio_get_fd(struct binder_io* bio)
++{
++    uint32_t fd = (uint32_t)-1;
++    struct flat_binder_object* obj;
++    obj = _bio_get_obj(bio);
++    if (!obj) {
++        return fd;
++    }
++    if (obj->hdr.type == BINDER_TYPE_FD) {
++        fd = obj->handle;
++        obj->handle = (uint32_t)-1;
++    }
++    return fd;
++}
+diff --git a/cmds/servicemanager/binder.h b/cmds/servicemanager/binder.h
+index a9ccc7413..1e32364fe 100644
+--- a/cmds/servicemanager/binder.h
++++ b/cmds/servicemanager/binder.h
+@@ -90,5 +90,6 @@ void bio_put_string16_x(struct binder_io *bio, const char *_str);
+ uint32_t bio_get_uint32(struct binder_io *bio);
+ uint16_t *bio_get_string16(struct binder_io *bio, size_t *sz);
+ uint32_t bio_get_ref(struct binder_io *bio);
++void bio_put_fd(struct binder_io* bio, uint32_t fd);
+ 
+ #endif
+-- 
+2.27.0
+
