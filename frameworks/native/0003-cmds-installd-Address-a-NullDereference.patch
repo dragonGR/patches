@@ -1,0 +1,29 @@
+From a02271a99c5c87c34333e1dda8557e6c2a4a694a Mon Sep 17 00:00:00 2001
+From: dragonGR <alextsanisbadlorg@gmail.com>
+Date: Sun, 22 Dec 2019 01:32:03 +0200
+Subject: [PATCH] cmds: installd: Address a NullDereference
+
+warning: Array access (from variable 'pkgname') results in a null pointer dereference
+
+Change-Id: I4e345bb277df7fe4e1639c23ebcb1b458c0caac1
+---
+ cmds/installd/dexopt.cpp | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/cmds/installd/dexopt.cpp b/cmds/installd/dexopt.cpp
+index 5fb13a5c5..0796ee291 100644
+--- a/cmds/installd/dexopt.cpp
++++ b/cmds/installd/dexopt.cpp
+@@ -2015,8 +2015,7 @@ int dexopt(const char* dex_path, uid_t uid, const char* pkgname, const char* ins
+         const char* volume_uuid, const char* class_loader_context, const char* se_info,
+         bool downgrade, int target_sdk_version, const char* profile_name,
+         const char* dex_metadata_path, const char* compilation_reason, std::string* error_msg) {
+-    CHECK(pkgname != nullptr);
+-    CHECK(pkgname[0] != 0);
++    CHECK(pkgname != nullptr && pkgname[0] != 0);
+     CHECK(error_msg != nullptr);
+     CHECK_EQ(dexopt_flags & ~DEXOPT_MASK, 0)
+         << "dexopt flags contains unknown fields: " << dexopt_flags;
+-- 
+2.27.0
+

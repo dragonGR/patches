@@ -1,0 +1,37 @@
+From ccbb054d81680c1ecfaaeda70b2679703c130561 Mon Sep 17 00:00:00 2001
+From: dragonGR <alextsanisbadlorg@gmail.com>
+Date: Tue, 28 Apr 2015 13:20:02 +0900
+Subject: [PATCH 1/1] binder: use uintptr_t instead of intptr_t
+
+Use unsigned integer type for membase >= 2G
+
+Change-Id: I0c5990dc0ef6a5a92c541ead43c272188d1f932e
+---
+ libs/binder/MemoryDealer.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/libs/binder/MemoryDealer.cpp b/libs/binder/MemoryDealer.cpp
+index eacad3b6b..54dfe91a1 100644
+--- a/libs/binder/MemoryDealer.cpp
++++ b/libs/binder/MemoryDealer.cpp
+@@ -169,7 +169,7 @@ Allocation::Allocation(
+     : MemoryBase(heap, offset, size), mDealer(dealer)
+ {
+ #ifndef NDEBUG
+-    void* const start_ptr = (void*)(intptr_t(heap->base()) + offset);
++    void* const start_ptr = (void*)(uintptr_t(heap->base()) + offset);
+     memset(start_ptr, 0xda, size);
+ #endif
+ }
+@@ -201,7 +201,7 @@ Allocation::~Allocation()
+         end &= ~(pagesize-1);
+ 
+         if (start < end) {
+-            void* const start_ptr = (void*)(intptr_t(getHeap()->base()) + start);
++            void* const start_ptr = (void*)(uintptr_t(getHeap()->base()) + start);
+             size_t size = end-start;
+ 
+ #ifndef NDEBUG
+-- 
+2.27.0
+
