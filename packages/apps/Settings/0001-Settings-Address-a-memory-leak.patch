@@ -1,0 +1,84 @@
+From d0b636b2d2e781718d954c8d35fed816e629e72d Mon Sep 17 00:00:00 2001
+From: dragonGR <alextsanisbadlorg@gmail.com>
+Date: Mon, 12 Aug 2019 20:32:38 +0300
+Subject: [PATCH] Settings: Address a memory leak
+
+Change-Id: Icd72b0beef66c08a5d11e770c59eaebdb7977272
+---
+ .../android/settings/applications/UsageAccessDetails.java   | 6 ++++++
+ .../applications/appinfo/ExternalSourcesDetails.java        | 6 ++++++
+ .../settings/applications/appinfo/WriteSettingsDetails.java | 6 ++++++
+ src/com/android/settings/datausage/DataSaverSummary.java    | 6 ++++++
+ 4 files changed, 24 insertions(+)
+
+diff --git a/src/com/android/settings/applications/UsageAccessDetails.java b/src/com/android/settings/applications/UsageAccessDetails.java
+index 58dff7c2e0..f5c40f2598 100644
+--- a/src/com/android/settings/applications/UsageAccessDetails.java
++++ b/src/com/android/settings/applications/UsageAccessDetails.java
+@@ -79,6 +79,12 @@ public class UsageAccessDetails extends AppInfoWithHeader implements OnPreferenc
+                 .setPackage(mPackageName);
+     }
+ 
++    @Override
++    public void onDestroy() {
++        super.onDestroy();
++        mUsageBridge.release();
++    }
++
+     @Override
+     public boolean onPreferenceClick(Preference preference) {
+         return false;
+diff --git a/src/com/android/settings/applications/appinfo/ExternalSourcesDetails.java b/src/com/android/settings/applications/appinfo/ExternalSourcesDetails.java
+index fe1d81c17c..67efeeb992 100644
+--- a/src/com/android/settings/applications/appinfo/ExternalSourcesDetails.java
++++ b/src/com/android/settings/applications/appinfo/ExternalSourcesDetails.java
+@@ -66,6 +66,12 @@ public class ExternalSourcesDetails extends AppInfoWithHeader
+         mSwitchPref.setOnPreferenceChangeListener(this);
+     }
+ 
++    @Override
++    public void onDestroy() {
++        super.onDestroy();
++        mAppBridge.release();
++    }
++
+     @Override
+     public boolean onPreferenceChange(Preference preference, Object newValue) {
+         final boolean checked = (Boolean) newValue;
+diff --git a/src/com/android/settings/applications/appinfo/WriteSettingsDetails.java b/src/com/android/settings/applications/appinfo/WriteSettingsDetails.java
+index f8c7ac5ad5..448039f923 100644
+--- a/src/com/android/settings/applications/appinfo/WriteSettingsDetails.java
++++ b/src/com/android/settings/applications/appinfo/WriteSettingsDetails.java
+@@ -75,6 +75,12 @@ public class WriteSettingsDetails extends AppInfoWithHeader implements OnPrefere
+                 .setPackage(mPackageName);
+     }
+ 
++    @Override
++    public void onDestroy() {
++        super.onDestroy();
++        mAppBridge.release();
++    }
++
+     @Override
+     public boolean onPreferenceClick(Preference preference) {
+         return false;
+diff --git a/src/com/android/settings/datausage/DataSaverSummary.java b/src/com/android/settings/datausage/DataSaverSummary.java
+index 1ab8c79ad9..c6a4b5f16a 100644
+--- a/src/com/android/settings/datausage/DataSaverSummary.java
++++ b/src/com/android/settings/datausage/DataSaverSummary.java
+@@ -100,6 +100,12 @@ public class DataSaverSummary extends SettingsPreferenceFragment
+         mDataUsageBridge.pause();
+     }
+ 
++    @Override
++    public void onDestroy() {
++        super.onDestroy();
++        mDataUsageBridge.release();
++    }
++
+     @Override
+     public void onSwitchChanged(Switch switchView, boolean isChecked) {
+         synchronized (this) {
+-- 
+2.28.0
+
